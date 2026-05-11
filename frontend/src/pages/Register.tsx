@@ -11,6 +11,16 @@ const Register: FC = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
+    if (password !== confirmPassword) {
+      alert('As senhas não coincidem. Por favor, verifique.');
+      return;
+    }
+
+    if (password.length < 6) {
+      alert('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
     
     try {
       const response = await fetch('http://localhost:3000/api/auth/register', {
