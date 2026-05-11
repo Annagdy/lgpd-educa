@@ -7,9 +7,29 @@ const Login: FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log('Login attempt with:', { email, password });
+    
+    try {
+      const response = await fetch('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`Login realizado com sucesso! Bem-vindo, ${data.user.name}`);
+        localStorage.setItem('token', data.token);
+        console.log('Success:', data);
+      } else {
+        alert(`Erro: ${data.message}`);
+      }
+    } catch (error) {
+      console.error('Error during login:', error);
+      alert('Erro ao conectar com o servidor.');
+    }
   };
 
   return (
