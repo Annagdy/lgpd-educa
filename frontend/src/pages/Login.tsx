@@ -7,28 +7,31 @@ const Login: FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     try {
       const response = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password })
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        alert(`Login realizado com sucesso! Bem-vindo, ${data.user.name}`);
+        console.log("Bem vindo, ", data?.user?.username);
+        
+        // Salva o token no localStorage
         localStorage.setItem('token', data.token);
-        console.log('Success:', data);
+        
+        // Redireciona o usuário para a página principal (Dashboard/Home)
+        // navigate('/dashboard');
       } else {
-        alert(`Erro: ${data.message}`);
+        alert(data.error); // Mostra o erro retornado pelo backend (ex: "Senha incorreta")
       }
     } catch (error) {
-      console.error('Error during login:', error);
-      alert('Erro ao conectar com o servidor.');
+      console.error("Erro na requisição:", error);
+      alert("Erro de conexão com o servidor.");
     }
   };
 
