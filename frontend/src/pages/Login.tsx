@@ -1,4 +1,4 @@
-import { useState, type FC, type FormEvent } from 'react';
+import { useState, type FC } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, LogIn, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';

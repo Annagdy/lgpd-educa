@@ -20,7 +20,7 @@ exports.register = async (req, res) => {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Nome, e-mail e senha são obrigatórios.' });
+      return res.status(400).json({ message: 'Nome,FormEvent e-mail e senha são obrigatórios.' });
     }
 
     // Verifica se já existe usuário com esse e-mail
