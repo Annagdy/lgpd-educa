@@ -71,22 +71,15 @@ exports.register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const confirmToken = crypto.randomBytes(32).toString('hex');
-
     const result = await pool.query(
-      `INSERT INTO users (username, email, password, confirm_token, is_verified)
-       VALUES ($1, $2, $3, $4, false)
+      `INSERT INTO users (username, email, password, is_verified)
+       VALUES ($1, $2, $3, true)
        RETURNING id, username, email`,
-      [username, email, hashedPassword, confirmToken]
-    );
-
-    // Send confirmation email (non-blocking)
-    sendConfirmationEmail(email, username, confirmToken).catch(err =>
-      console.error('Erro ao enviar e-mail de confirmação:', err)
+      [username, email, hashedPassword]
     );
 
     return res.status(201).json({
-      message: 'Conta criada! Verifique seu e-mail para ativar a conta.',
+      message: 'Conta criada com sucesso.',
       user: result.rows[0],
     });
   } catch (err) {
@@ -116,10 +109,6 @@ exports.login = async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
       return res.status(401).json({ message: 'E-mail ou senha incorretos.' });
-    }
-
-    if (!user.is_verified) {
-      return res.status(403).json({ message: 'Conta não verificada. Confirme seu e-mail.' });
     }
 
     const token = generateToken({ id: user.id, email: user.email });

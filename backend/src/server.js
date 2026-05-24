@@ -4,6 +4,7 @@ const cors = require('cors');
 const app = express();
 
 const authRoutes = require('./routes/authRoutes');
+const contentRoutes = require('./routes/contentRoutes');
 
 // Middlewares
 app.use(cors({
@@ -14,6 +15,7 @@ app.use(express.json());
 
 // Rotas
 app.use('/api/auth', authRoutes);
+app.use('/api/content', contentRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
