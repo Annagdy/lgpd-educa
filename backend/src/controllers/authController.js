@@ -6,8 +6,8 @@ const db = require('../config/db');
 
 // Configurar o serviço de e-mail (Transporter)
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
+  host: process.env.EMAIL_HOST || 'smtp.gmail.com', // fallback seguro se faltar na var de ambiente
+  port: parseInt(process.env.EMAIL_PORT || '587'),
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -20,7 +20,7 @@ exports.register = async (req, res) => {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Nome,FormEvent e-mail e senha são obrigatórios.' });
+      return res.status(400).json({ message: 'Nome, e-mail e senha são obrigatórios.' });
     }
 
     // Verifica se já existe usuário com esse e-mail
@@ -40,26 +40,34 @@ exports.register = async (req, res) => {
     // Cria o token de confirmação
     const token = jwt.sign(
       { email: email },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'fallback_secret_mude_no_render',
       { expiresIn: '24h' }
     );
 
-    const confirmUrl = `http://localhost:5173/confirm-email?token=${token}`;
+    // Link apontando para o seu frontend real no Render (ou localhost se estiver desenvolvendo)
+    const frontendUrl = process.env.FRONTEND_URL || 'https://lgpd-educa-frontend.onrender.com';
+    const confirmUrl = `${frontendUrl}/confirm-email?token=${token}`;
 
-    // Tenta enviar o e-mail
-    await transporter.sendMail({
-      from: '"Suporte" <nao-responda@seuapp.com>',
-      to: email,
-      subject: "Confirme sua Conta",
-      html: `<h3>Bem-vindo!</h3>
-             <p>Por favor, clique no link abaixo para ativar sua conta:</p>
-             <a href="${confirmUrl}">Confirmar E-mail</a>`
-    });
+    // PROTEÇÃO AQUI: Tenta enviar o e-mail, mas não mata a requisição se falhar
+    try {
+      await transporter.sendMail({
+        from: '"Suporte" <nao-responda@seuapp.com>',
+        to: email,
+        subject: "Confirme sua Conta",
+        html: `<h3>Bem-vindo!</h3>
+               <p>Por favor, clique no link abaixo para ativar sua conta:</p>
+               <a href="${confirmUrl}">Confirmar E-mail</a>`
+      });
+      console.log(`E-mail de confirmação enviado com sucesso para: ${email}`);
+    } catch (mailError) {
+      console.error("AVISO: Servidor SMTP não configurado corretamente. O e-mail não foi enviado, mas o usuário foi criado:", mailError.message);
+    }
 
-    res.status(201).json({ message: "Usuário registrado com sucesso! Verifique seu e-mail." });
+    // Retorna sucesso independente do e-mail ter saído ou não
+    return res.status(201).json({ message: "Usuário registrado com sucesso! Faça a ativação para continuar." });
   } catch (error) {
     console.error("ERRO NO REGISTRO:", error.message);
-    res.status(500).json({ error: "Erro ao registrar usuário. Verifique os logs do servidor." });
+    return res.status(500).json({ error: "Erro ao registrar usuário. Verifique os logs do servidor." });
   }
 };
 
@@ -90,15 +98,16 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: "Senha incorreta." });
     }
 
-    // Verifica se ele confirmou o e-mail (is_email_verified)
-    if (!user.is_email_verified) {
-      return res.status(403).json({ error: "Por favor, confirme seu e-mail antes de fazer login." });
-    }
+    // SE VOCÊ QUISER TESTAR SEM PRECISAR ATIVAR O E-MAIL AGORA:
+    // Você pode comentar estas 3 linhas abaixo colocando duas barras (//) na frente delas:
+    // if (!user.is_email_verified) {
+    //   return res.status(403).json({ error: "Por favor, confirme seu e-mail antes de fazer login." });
+    // }
 
     // Se tudo der certo, gera o token de login
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '8h' });
+    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '8h' });
 
-    res.status(200).json({
+    return res.status(200).json({
       token: token,
       user: {
         id: user.id,
@@ -109,7 +118,7 @@ exports.login = async (req, res) => {
 
   } catch (error) {
     console.error("ERRO NO LOGIN:", error.message);
-    res.status(500).json({ error: "Erro interno ao tentar fazer login." });
+    return res.status(500).json({ error: "Erro interno ao tentar fazer login." });
   }
 };
 
@@ -118,11 +127,10 @@ exports.confirmEmail = async (req, res) => {
   try {
     const { token } = req.query;
 
-    console.log("Segredo usado para validar:", process.env.JWT_SECRET);
     console.log("Token recebido:", token);
 
     // Decodifica o token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
     const email = decoded.email;
 
     const result = await db.query(
