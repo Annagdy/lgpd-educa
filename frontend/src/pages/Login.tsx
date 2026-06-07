@@ -1,43 +1,42 @@
-import { useState, type FC } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, type FC, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, LogIn, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 const Login: FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
     try {
       const response = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        console.log("Bem vindo, ", data?.user?.username);
-        
-        // Salva o token no localStorage
-        localStorage.setItem('token', data.token);
-        
-        // Redireciona o usuário para a página principal (Dashboard/Home)
-        // navigate('/dashboard');
+        login(data.token, data.user);
+        navigate('/');
       } else {
-        alert(data.error); // Mostra o erro retornado pelo backend (ex: "Senha incorreta")
+        alert(data.error || data.message || 'Não foi possível entrar.');
       }
     } catch (error) {
-      console.error("Erro na requisição:", error);
-      alert("Erro de conexão com o servidor.");
+      console.error('Erro na requisição:', error);
+      alert('Erro de conexão com o servidor.');
     }
   };
 
   return (
     <div className="auth-container">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -58,14 +57,14 @@ const Login: FC = () => {
             <label className="input-label" htmlFor="email">E-mail</label>
             <div style={{ position: 'relative' }}>
               <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text)' }} />
-              <input 
-                type="email" 
+              <input
+                type="email"
                 id="email"
                 className="input-field w-full"
                 style={{ paddingLeft: '40px' }}
                 placeholder="seu@email.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 required
               />
             </div>
@@ -75,14 +74,14 @@ const Login: FC = () => {
             <label className="input-label" htmlFor="password">Senha</label>
             <div style={{ position: 'relative' }}>
               <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text)' }} />
-              <input 
-                type="password" 
+              <input
+                type="password"
                 id="password"
                 className="input-field w-full"
                 style={{ paddingLeft: '40px' }}
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 required
               />
             </div>
