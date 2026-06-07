@@ -8,7 +8,20 @@ const contentRoutes = require('./routes/contentRoutes');
 const app = express();
 
 // Middlewares
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://lgpd-educa-frontend.onrender.com', // Substitua exatamente pela URL do seu frontend no Render
+    'http://localhost:5173',                    // Mantém o localhost do Vite para quando você testar na sua máquina
+    'http://localhost:3000'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // Necessário se você lida com cookies ou sessões
+}));
+
+// Importante: Se houver uma requisição do tipo OPTIONS (Preflight), o cors já responde aqui
+app.options('*', cors());
+
 app.use(express.json());
 
 // Rotas
