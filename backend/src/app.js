@@ -20,4 +20,10 @@ app.get('/', (req, res) => {
   res.send('API LGPD-Educa rodando com sucesso!');
 });
 
+const PORT = process.env.PORT || 3000; // Ele vai usar a porta que o Render mandar, ou 5000 localmente
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+});
+
 module.exports = app;

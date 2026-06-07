@@ -6,7 +6,10 @@ const app = express();
 const authRoutes = require('./routes/authRoutes');
 const contentRoutes = require('./routes/contentRoutes');
 
-app.use(cors()); 
+app.use(cors({
+  origin: 'https://seu-frontend-no-render.onrender.com', // Coloque a URL do seu front no Render aqui
+  credentials: true
+}));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
