@@ -1,6 +1,7 @@
 // src/pages/ConfirmEmail.jsx (No seu Frontend React)
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { API_URL } from '../lib/api';
 
 export default function ConfirmEmail() {
   const [searchParams] = useSearchParams();
@@ -17,7 +18,7 @@ export default function ConfirmEmail() {
     }
 
     // Faz o pedido ao Backend (Node.js na porta 3000)
-    fetch(`http://localhost:3000/api/auth/confirm-email?token=${token}`)
+    fetch(`${API_URL}/api/auth/confirm-email?token=${token}`)
       .then((resposta) => resposta.json())
       .then((dados) => {
         if (dados.message) {
