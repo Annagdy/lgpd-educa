@@ -98,11 +98,10 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: "Senha incorreta." });
     }
 
-    // SE VOCÊ QUISER TESTAR SEM PRECISAR ATIVAR O E-MAIL AGORA:
-    // Você pode comentar estas 3 linhas abaixo colocando duas barras (//) na frente delas:
-    // if (!user.is_email_verified) {
-    //   return res.status(403).json({ error: "Por favor, confirme seu e-mail antes de fazer login." });
-    // }
+    // Bloqueia login se e-mail não foi confirmado
+    if (!user.is_email_verified) {
+      return res.status(403).json({ error: "Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada." });
+    }
 
     // Se tudo der certo, gera o token de login
     const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '8h' });
@@ -130,7 +129,7 @@ exports.confirmEmail = async (req, res) => {
     console.log("Token recebido:", token);
 
     // Decodifica o token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_mude_no_render');
     const email = decoded.email;
 
     const result = await db.query(

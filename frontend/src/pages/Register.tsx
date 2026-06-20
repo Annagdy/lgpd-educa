@@ -9,20 +9,26 @@ const Register: FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setMessage('');
+    setErrorMsg('');
 
     if (password !== confirmPassword) {
-      alert('As senhas não coincidem. Por favor, verifique.');
+      setErrorMsg('As senhas não coincidem. Por favor, verifique.');
       return;
     }
 
     if (password.length < 6) {
-      alert('A senha deve ter pelo menos 6 caracteres.');
+      setErrorMsg('A senha deve ter pelo menos 6 caracteres.');
       return;
     }
-    
+
+    setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
@@ -33,14 +39,18 @@ const Register: FC = () => {
       const data = await response.json();
 
       if (response.ok) {
-        alert('Cadastro realizado com sucesso! Agora você pode fazer login.');
-        console.log('Success:', data);
+        setMessage('Cadastro realizado! Verifique seu e-mail para ativar a conta antes de fazer login.');
+        setName('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
       } else {
-        alert(`Erro: ${data.message}`);
+        setErrorMsg(data.message || 'Erro ao realizar o cadastro.');
       }
-    } catch (error) {
-      console.error('Error during registration:', error);
-      alert('Erro ao conectar com o servidor.');
+    } catch {
+      setErrorMsg('Erro ao conectar com o servidor. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -131,9 +141,25 @@ const Register: FC = () => {
             </div>
           </div>
 
-          <button type="submit" className="btn-primary flex items-center justify-center gap-2 mt-4">
+          {errorMsg && (
+            <div className="register-msg register-msg--error" id="register-error">
+              {errorMsg}
+            </div>
+          )}
+          {message && (
+            <div className="register-msg register-msg--success" id="register-success">
+              {message}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="btn-primary flex items-center justify-center gap-2 mt-4"
+            disabled={loading}
+            id="btn-register-submit"
+          >
             <UserPlus size={20} />
-            Cadastrar
+            {loading ? 'Cadastrando...' : 'Cadastrar'}
           </button>
         </form>
 

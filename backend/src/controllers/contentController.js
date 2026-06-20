@@ -130,6 +130,7 @@ exports.getQuiz = async (_req, res) => {
         o.option_text
        FROM quiz_questions q
        JOIN quiz_options o ON o.question_id = q.id
+       WHERE q.module_id IS NULL
        ORDER BY q.sort_order, q.id, o.sort_order, o.id`
     );
 
@@ -159,6 +160,109 @@ exports.getQuiz = async (_req, res) => {
     return res.status(500).json({ message: 'Erro interno do servidor.' });
   }
 };
+
+exports.getModuleQuiz = async (req, res) => {
+  const moduleId = Number(req.params.id);
+
+  if (!Number.isInteger(moduleId) || moduleId <= 0) {
+    return res.status(400).json({ message: 'ID de modulo invalido.' });
+  }
+
+  try {
+    const result = await db.query(
+      `SELECT
+        q.id AS question_id,
+        q.question,
+        o.id AS option_id,
+        o.option_text
+       FROM quiz_questions q
+       JOIN quiz_options o ON o.question_id = q.id
+       WHERE q.module_id = $1
+       ORDER BY q.sort_order, q.id, o.sort_order, o.id`,
+      [moduleId]
+    );
+
+    const questions = result.rows.reduce((acc, row) => {
+      let question = acc.find((item) => item.id === row.question_id);
+
+      if (!question) {
+        question = { id: row.question_id, question: row.question, options: [] };
+        acc.push(question);
+      }
+
+      question.options.push({ id: row.option_id, text: row.option_text });
+      return acc;
+    }, []);
+
+    return res.json(questions);
+  } catch (err) {
+    console.error('Erro ao carregar quiz do modulo:', err);
+    return res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
+exports.realizarModuleQuiz = async (req, res) => {
+  const moduleId = Number(req.params.id);
+  const { answers } = req.body;
+
+  if (!Number.isInteger(moduleId) || moduleId <= 0) {
+    return res.status(400).json({ message: 'ID de modulo invalido.' });
+  }
+
+  if (!Array.isArray(answers) || answers.length === 0) {
+    return res.status(400).json({ message: 'Envie as respostas do quiz.' });
+  }
+
+  const normalizedAnswers = answers
+    .map((a) => ({ questionId: Number(a.questionId), optionId: Number(a.optionId) }))
+    .filter((a) => Number.isInteger(a.questionId) && Number.isInteger(a.optionId));
+
+  if (normalizedAnswers.length !== answers.length) {
+    return res.status(400).json({ message: 'Formato de respostas invalido.' });
+  }
+
+  try {
+    const questionIds = normalizedAnswers.map((a) => a.questionId);
+    const correctResult = await db.query(
+      `SELECT question_id, id AS option_id
+       FROM quiz_options
+       WHERE question_id = ANY($1::int[]) AND is_correct = true`,
+      [questionIds]
+    );
+
+    const correctByQuestion = new Map(
+      correctResult.rows.map((row) => [row.question_id, row.option_id])
+    );
+
+    const checkedAnswers = normalizedAnswers.map((a) => ({
+      ...a,
+      correctOptionId: correctByQuestion.get(a.questionId),
+      isCorrect: correctByQuestion.get(a.questionId) === a.optionId,
+    }));
+
+    const score = checkedAnswers.filter((a) => a.isCorrect).length;
+    const totalQuestions = checkedAnswers.length;
+    const percentage = Number(((score / totalQuestions) * 100).toFixed(2));
+
+    const attemptResult = await db.query(
+      `INSERT INTO quiz_attempts (user_id, score, total_questions, percentage, answers)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, score, total_questions, percentage`,
+      [req.user.id, score, totalQuestions, percentage, JSON.stringify(checkedAnswers)]
+    );
+
+    await syncUserProgress(req.user.id);
+
+    return res.status(201).json({
+      ...attemptResult.rows[0],
+      answers: checkedAnswers,
+    });
+  } catch (err) {
+    console.error('Erro ao realizar quiz do modulo:', err);
+    return res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
 
 exports.realizarQuiz = async (req, res) => {
   const { answers } = req.body;
