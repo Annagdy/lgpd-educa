@@ -33,9 +33,17 @@ exports.register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Salva no banco de dados
-    const query = `INSERT INTO users (username, email, password, is_email_verified) VALUES ($1, $2, $3, false)`;
-    await db.query(query, [name, email, hashedPassword]);
+    // Se SMTP não configurado, já verifica o e-mail automaticamente (ambiente local)
+    const smtpConfigurado = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+    const autoVerificado = !smtpConfigurado;
+
+    const query = `INSERT INTO users (username, email, password, is_email_verified) VALUES ($1, $2, $3, $4)`;
+    await db.query(query, [name, email, hashedPassword, autoVerificado]);
+
+    if (autoVerificado) {
+      console.log(`[DEV] SMTP não configurado. Usuário ${email} verificado automaticamente.`);
+      return res.status(201).json({ message: "Usuário registrado com sucesso! Você já pode fazer login." });
+    }
 
     // Cria o token de confirmação
     const token = jwt.sign(
@@ -44,11 +52,9 @@ exports.register = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // Link apontando para o seu frontend real no Render (ou localhost se estiver desenvolvendo)
     const frontendUrl = process.env.FRONTEND_URL || 'https://lgpd-educa-frontend.onrender.com';
     const confirmUrl = `${frontendUrl}/confirm-email?token=${token}`;
 
-    // PROTEÇÃO AQUI: Tenta enviar o e-mail, mas não mata a requisição se falhar
     try {
       await transporter.sendMail({
         from: '"Suporte" <nao-responda@seuapp.com>',
@@ -60,16 +66,16 @@ exports.register = async (req, res) => {
       });
       console.log(`E-mail de confirmação enviado com sucesso para: ${email}`);
     } catch (mailError) {
-      console.error("AVISO: Servidor SMTP não configurado corretamente. O e-mail não foi enviado, mas o usuário foi criado:", mailError.message);
+      console.error("AVISO: E-mail não enviado:", mailError.message);
     }
 
-    // Retorna sucesso independente do e-mail ter saído ou não
-    return res.status(201).json({ message: "Usuário registrado com sucesso! Faça a ativação para continuar." });
+    return res.status(201).json({ message: "Usuário registrado com sucesso! Verifique seu e-mail para ativar a conta." });
   } catch (error) {
     console.error("ERRO NO REGISTRO:", error.message);
     return res.status(500).json({ error: "Erro ao registrar usuário. Verifique os logs do servidor." });
   }
 };
+
 
 // Alias para compatibilidade com a rota POST /register via authController.cadastrar
 exports.cadastrar = exports.register;
@@ -104,7 +110,7 @@ exports.login = async (req, res) => {
     }
 
     // Se tudo der certo, gera o token de login
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '8h' });
+    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'fallback_secret_mude_no_render', { expiresIn: '8h' });
 
     return res.status(200).json({
       token: token,

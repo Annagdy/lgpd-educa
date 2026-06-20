@@ -36,11 +36,13 @@ if (process.env.NODE_ENV === 'test' || process.env.DB_MOCK === 'true') {
     return { rows: [], rowCount: 0 };
   };
 } else {
+ const isRemote = (process.env.DATABASE_URL || '').includes('render.com') ||
+                  (process.env.DATABASE_URL || '').includes('neon.tech') ||
+                  (process.env.DATABASE_URL || '').includes('supabase');
+
  const pool = new Pool({
-  connectionString: process.env.DATABASE_URL, 
-  ssl: {
-    rejectUnauthorized: false 
-  }
+  connectionString: process.env.DATABASE_URL,
+  ssl: isRemote ? { rejectUnauthorized: false } : false,
 });
 
   pool.on('error', (err) => {
